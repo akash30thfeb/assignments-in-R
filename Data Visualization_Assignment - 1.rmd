@@ -1,0 +1,116 @@
+---
+title: "Data Visualization_Assignment - 1"
+author: "Akash Datta"
+date: "29 November 2017"
+output: html_document
+---
+
+1. For top ten parties compute the following metrics for the year 2009
+	a) Total number of contestants
+```{r warning=F,message=F}
+election_data <- read.csv("C:/Users/Administrator/Desktop/MANIPAL/DV/parliament/parliament.csv")
+library(dplyr)
+library(ggplot2)
+library(plotly)
+Top_10_Party_names <- election_data %>% filter(Position == 1) %>% group_by(PARTY) %>% summarise(WINS = n()) %>% arrange(desc(WINS)) %>% select(PARTY) %>% head(10)
+
+A1.a <- election_data %>% filter(YEAR == 2009, PARTY %in% Top_10_Party_names$PARTY) %>% group_by(PARTY) %>% summarise(Total_contestants = n())
+
+A1.a <- A1.a %>% ggplot(aes(reorder(PARTY,-Total_contestants),Total_contestants, fill = PARTY)) + geom_bar(stat = "identity") + xlab("PARTY") + ylab("No. of Contestants") + ggtitle("Partywise Total Contestants in 2009") + geom_text(position = "stack", aes(label = Total_contestants))
+
+A1.a %>% ggplotly()
+```
+
+
+
+b) Total of number of winning seats
+```{r, warning=F,message=F}
+A1.b <- election_data %>% filter(YEAR == 2009, PARTY %in% Top_10_Party_names$PARTY, Position == 1) %>% group_by(PARTY) %>% summarise(Total_Winning_Seats = sum(Position))
+
+A1.b <- A1.b %>% ggplot(aes(reorder(PARTY,-Total_Winning_Seats),Total_Winning_Seats, fill = PARTY)) + geom_bar(stat = "identity") + xlab("PARTY") + ylab("Seats Won") + ggtitle("Partywise Seats Won in 2009") + geom_text(position = "stack", aes(label = Total_Winning_Seats))
+
+A1.b %>% ggplotly()
+```
+
+
+
+c) Avg. %of votes
+```{r, warning=F,message=F}
+A1.c <- election_data %>% filter(YEAR == 2009) %>% filter(PARTY %in% Top_10_Party_names$PARTY) %>% mutate(SumofAllVotes = sum(VOTES)) %>% group_by(PARTY) %>% summarise(Avg_Percent_Votes = round(sum(VOTES)/min(SumofAllVotes)*100))
+
+A1.c <- A1.c %>% ggplot(aes(reorder(PARTY,-Avg_Percent_Votes),Avg_Percent_Votes, fill = PARTY)) + geom_bar(stat = "identity") + xlab("PARTY") + ylab("Avg. %age of Votes") + ggtitle("Partywise Average %age of Votes in 2009") + geom_text(position = "stack", aes(label = Avg_Percent_Votes))
+
+A1.c %>% ggplotly()
+```
+
+
+
+d) Identify top ten candidates with highest %margin of votes for the year 2009
+```{r, warning=F,message=F}
+
+A1.d <- election_data %>% filter(YEAR == 2009, Position %in% c(1,2)) %>% group_by(PC, NAME) %>% summarise(TotalVotes = sum(VOTES)) %>% group_by(PC) %>% arrange(PC, desc(TotalVotes)) %>% mutate(diff_votes = c(-diff(TotalVotes), NA)) %>% na.omit() %>% mutate(perc_margin = diff_votes*100/(TotalVotes - diff_votes)) %>% arrange(desc(perc_margin)) %>% head(10)
+
+A1.d <- A1.d %>% ggplot(aes(reorder(NAME,perc_margin),perc_margin, fill = NAME)) + geom_bar(stat = "identity") + xlab("Contestant Name") + ylab("Percentage Margin") + coord_flip() + theme(legend.position = "none")
+
+A1.d %>% ggplotly()
+```
+
+
+
+2. Identify year wise percentage of male and female candidates?
+```{r, warning=F,message=F}
+A2 <- election_data %>% filter(SEX == "M"|SEX == "F") %>% group_by(YEAR,SEX) %>% summarise(GenderCount = n()) %>% group_by(YEAR) %>% mutate(TotalCandidatesperYear = sum(GenderCount)) %>% mutate(Gender_Division = round(GenderCount/TotalCandidatesperYear*100))
+
+A2 <- A2 %>% ggplot(aes(as.factor(YEAR),Gender_Division, fill = SEX)) + geom_bar(stat = "identity") + xlab("YEAR") + ylab("Gender Split")
+
+A2 %>% ggplotly()
+```
+
+
+
+3. Create a new column by binning the Runs column using the following ranges and plot the frequency count of ranges
+0-25, 26-50, 51-75, 76-100, 100+
+```{r, warning=F,message=F}
+odi_data <- read.csv("C:/Users/Administrator/Desktop/MANIPAL/DV/odi-batting/odi-batting.csv")
+odi_data <- na.omit(odi_data)     #since 'Runs' column has 26 'NA' values 
+
+odi_data$range <- cut(odi_data$Runs, breaks=c(-1,25,50,75,100,Inf), labels=c("0-25","26-50","51-75","76-100","100+"))
+
+A3 <- odi_data %>% group_by(range) %>% summarise(Frequency = n()) %>% ggplot(aes(range,Frequency, fill = range)) + geom_histogram(stat = "identity") + xlab("Runs")
+
+A3 %>% ggplotly()
+```
+
+
+
+4. Consider the top ten players by total runs and compute and visualize the number of centuries across years (use facet_grid or facet_wrap)
+```{r, warning=F,message=F}
+Top_10_Players <- odi_data %>% group_by(Player) %>% summarise(TotalRuns = sum(Runs)) %>% arrange(desc(TotalRuns)) %>% head(10)
+
+odi_data$"100's" <- as.numeric(odi_data$Runs > 99)
+library(lubridate)
+odi_data$Year <- year(mdy(odi_data$MatchDate))
+
+A4 <- odi_data %>% filter(Player %in% Top_10_Players$Player) %>% group_by(Player, Year) %>%  summarise(Centuries = sum(`100's`))
+
+A4 <- ggplot(A4, aes(Year,Centuries, color = Player)) + geom_point() + geom_line() + facet_wrap(~Player, nrow = 5) + theme(legend.position = "none")
+
+A4 %>% ggplotly()
+```
+
+
+
+5. Create a scatter plot with the following details
+	X axis contains number of retweets
+	Y axis contains number of likes
+	Color represents device from which it was tweeted
+```{r, warning=F,message=F}
+tweets_data <- read.csv("C:/Users/Administrator/Desktop/MANIPAL/DV/narendramodi_tweets/narendramodi_tweets.csv")
+
+A5 <- ggplot(tweets_data, aes(retweets_count,favorite_count, color = source)) + geom_point() + xlab("Retweets") + ylab("Likes") + ggtitle("Retweets vs. Likes / Device Used")
+
+A5
+```
+
+
+____________________________________________________END______________________________________________________
